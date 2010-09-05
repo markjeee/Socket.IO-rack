@@ -1,1 +1,10 @@
-Nothing to say for now.
+*GOAL*
+
+Add this in your config/environment.rb in Rails, or just use the
+Middleware, in any Rack-compatible app. This will be implemented
+using Thin + EventMachine, so you're likely going to need those as well.
+
+config.middleware.use("Palmade::SocketIoRack::Middleware",
+                      { :resources => {
+                                        '/firehose/socket.io' => "Tweetitow::FirehoseSocket",
+                                        '/echo' => "Palmade::SocketIoRack::EchoResource" } })
