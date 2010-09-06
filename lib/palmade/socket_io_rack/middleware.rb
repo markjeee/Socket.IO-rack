@@ -3,13 +3,18 @@
 module Palmade::SocketIoRack
   class Middleware
     DEFAULT_OPTIONS = {
-      :resources => { }
+      :resources => { },
+      :persistence => { }
     }
 
     CPATH_INFO = "PATH_INFO".freeze
     CSOCKET_IO_RESOURCE = "SOCKET_IO_RESOURCE".freeze
     CSOCKET_IO_TRANSPORT = "SOCKET_IO_TRANSPORT".freeze
     CSOCKET_IO_TRANSPORT_OPTIONS = "SOCKET_IO_TRANSPORT_OPTIONS".freeze
+
+    CREQUEST_METHOD = "REQUEST_METHOD".freeze
+    CPOST = "POST".freeze
+    CGET = "GET".freeze
 
     Cwebsocket = "websocket".freeze
     CWebSocket = "WebSocket".freeze
@@ -26,16 +31,24 @@ module Palmade::SocketIoRack
     SUPPORTED_TRANSPORTS = [ Cwebsocket,
                              Cxhrpolling ]
 
-    def logger
-      @logger ||= Palmade::SocketIoRack.logger
-    end
-
     def initialize(app, options = { })
       @options = DEFAULT_OPTIONS.merge(options)
       @resources = options[:resources]
       @resource_paths = nil
 
       @app = app
+    end
+
+    def logger
+      @logger ||= Palmade::SocketIoRack.logger
+    end
+
+    def persistence
+      if defined?(@persistence)
+        @persistence
+      else
+        @persistence = Palmade::SocketIoRack::Persistence.new(@options[:persistence])
+      end
     end
 
     def call(env)
@@ -99,24 +112,25 @@ module Palmade::SocketIoRack
                                    transport,
                                    transport_options)
 
-        ws_handler = resource.initialize_transport! Cwebsocket
-
-        performed, response = true, [ 101,
-                                      {
-                                        CConnection => CUpgrade,
-                                        CUpgrade => CWebSocket,
-                                        Cws_handler => ws_handler
-                                      },
-                                      [ ] ]
+        performed, response = resource.
+          initialize_transport!(Cwebsocket).handle_request(env, transport_options, persistence)
       end
 
       [ performed, response ]
     end
 
-    # TODO: Implement xhr-polling transport
     def perform_xhr_polling(env, rpath, transport, transport_options)
       performed = false
       response = nil
+
+      if [ CPOST, CGET ].include?(env[CREQUEST_METHOD])
+        resource = create_resource(rpath,
+                                   transport,
+                                   transport_options)
+
+        performed, response = resource.
+          initialize_transport!(Cxhrpolling).handle_request(env, transport_options, persistence)
+      end
 
       [ performed, response ]
     end
@@ -151,7 +165,6 @@ module Palmade::SocketIoRack
     # TODO: Add support for specfying session id
     def create_resource(rpath, transport, transport_options)
       rpath_options = @resources[rpath]
-      session_id = nil
 
       case rpath_options
       when String
@@ -167,9 +180,9 @@ module Palmade::SocketIoRack
       case rsc
       when String
         rsc = constantize(rsc)
-        resource = rsc.new(session_id, rsc_options || { })
+        resource = rsc.new(rsc_options || { })
       when Class
-        resource = rsc.new(session_id, rsc_options || { })
+        resource = rsc.new(rsc_options || { })
       else
         raise "Unsupported web socket handler #{ws_handler.inspect}"
       end

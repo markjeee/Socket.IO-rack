@@ -12,6 +12,8 @@ module Palmade
     autoload :Middleware, File.join(SOCKET_IO_RACK_LIB_DIR, 'socket_io_rack/middleware')
     autoload :Base, File.join(SOCKET_IO_RACK_LIB_DIR, 'socket_io_rack/base')
     autoload :Transports, File.join(SOCKET_IO_RACK_LIB_DIR, 'socket_io_rack/transports')
+    autoload :Persistence, File.join(SOCKET_IO_RACK_LIB_DIR, 'socket_io_rack/persistence')
+    autoload :Session, File.join(SOCKET_IO_RACK_LIB_DIR, 'socket_io_rack/session')
 
     autoload :EchoResource, File.join(SOCKET_IO_RACK_LIB_DIR, 'socket_io_rack/echo_resource')
   end

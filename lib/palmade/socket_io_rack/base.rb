@@ -4,15 +4,16 @@ module Palmade::SocketIoRack
   class Base
     DEFAULT_OPTIONS = { }
 
+    attr_reader :session
     attr_reader :transport
 
     Cxhrpolling = "xhr-polling".freeze
     Cwebsocket = "websocket".freeze
 
-    def initialize(session_id = nil, options = { })
-      @session_id = session_id
+    def initialize(options = { })
       @options = DEFAULT_OPTIONS.merge(options)
       @transport = nil
+      @session = nil
     end
 
     def initialize_transport!(tn, to = { })
@@ -26,6 +27,10 @@ module Palmade::SocketIoRack
       end
 
       @transport
+    end
+
+    def initialize_session!(sess)
+      @session = sess
     end
 
     def fire_connect
