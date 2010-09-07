@@ -19,11 +19,18 @@ module Palmade::SocketIoRack
 
     # Create a new session
     def create_session
-      Palmade::SocketIoRack::Session.new(self)
+      sess_opts = {
+        :cache_key => @options[:cache_key],
+        :cache_expiry => @options[:cache_expiry],
+        :sidbits => @options[:sidbis]
+      }
+
+      Palmade::SocketIoRack::Session.new(self, nil, sess_opts).persist
     end
 
     # Extend an existing one, or create a new one, if not found
     def resume_session(session_id)
+      Palmade::SocketIoRack::Session.find(session_id)
     end
 
     def rcache
