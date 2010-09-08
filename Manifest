@@ -4,3 +4,14 @@ Manifest
 README
 Rakefile
 lib/palmade/socket_io_rack.rb
+lib/palmade/socket_io_rack/base.rb
+lib/palmade/socket_io_rack/echo_resource.rb
+lib/palmade/socket_io_rack/middleware.rb
+lib/palmade/socket_io_rack/persistence.rb
+lib/palmade/socket_io_rack/session.rb
+lib/palmade/socket_io_rack/transports.rb
+lib/palmade/socket_io_rack/transports/base.rb
+lib/palmade/socket_io_rack/transports/web_socket.rb
+lib/palmade/socket_io_rack/transports/xhr_polling.rb
+test/session_test.rb
+test/test_helper.rb

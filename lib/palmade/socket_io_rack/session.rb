@@ -2,14 +2,11 @@ module Palmade::SocketIoRack
   class Session
     DEFAULT_OPTIONS = {
       :sidbits => 128,
-      :cache_key => 'Socket.IO-rack/persistence'.freeze
+      :cache_key => 'Socket.IO-rack/persistence'.freeze,
+      :cache_expiry => 60 * 60, # default: 1 hr
     }
 
-    # TODO: Implement finding of existing session
-    def self.find(sess_id)
-      nil
-    end
-
+    attr_reader :options
     attr_reader :session_id
 
     def initialize(persistence, sess_id = nil, options = { })
@@ -29,41 +26,70 @@ module Palmade::SocketIoRack
     def new!; @new = true; end
     def not_new!; @new = false; end
 
-    # TODO: !!! Implement the functionalities below
-
     # create the initial keys, and set their expiry
-    def persist(tm = nil)
+    def persist!
+      if new?
+        rcache.hset(session_cache_key, '_created', Time.now.to_s)
+        rcache.expire(session_cache_key, @options[:cache_expiry])
+        not_new!
+      else
+        raise "Can't persist, already existed. Try renew! instead."
+      end
+
       self
     end
+    alias :persist :persist!
+
+    def drop!
+      rcache.del(session_cache_key)
+      rcache.del(inbox_cache_key)
+      rcache.del(outbox_cache_key)
+
+      self
+    end
+    alias :drop :drop!
 
     # re-extend their expiry from this time on
-    def renew(tm = nil)
+    def renew!
+      if new?
+        raise "Can't renew, this hasn't been persisted yet. Try persist! instead."
+      else
+        rcache.expire(session_cache_key, @options[:cache_expiry])
+      end
+
       self
     end
+    alias :renew :renew!
 
     # HGET: Get hash value
     def [](k)
+      rcache.hget(session_cache_key, k.to_s)
     end
 
     # HSET: Set hash value
     def []=(k,v)
+      rcache.hset(session_cache_key, k.to_s, v)
     end
 
     # HKEYS
     def keys
+      rcache.hkeys(session_cache_key)
     end
 
     # HVALS
     def values
+      rcache.hvals(session_cache_key)
     end
 
     # HLEN
     def size
+      rcache.hlen(session_cache_key)
     end
     alias :length :size
 
     # HEXISTS
     def include?(k)
+      rcache.hexists(session_cache_key, k.to_s)
     end
     alias :exists? :include?
 
@@ -71,7 +97,7 @@ module Palmade::SocketIoRack
     #
     # * inbox queue are for messages *from* the clients, or web browser
     #   clients, etc.
-    # * outbox queue are for messages *for* the clinets, or web
+    # * outbox queue are for messages *for* the clients, or web
     #   browser clients, etc; that are generated internally.
 
     # save to inbox
