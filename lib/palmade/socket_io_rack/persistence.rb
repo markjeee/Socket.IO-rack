@@ -53,12 +53,12 @@ module Palmade::SocketIoRack
 
     def reset
       close
-      @rcache = nil
       rcache
     end
 
     def close
-      rcache.close
+      rcache.quit
+      @rcache = nil
     end
   end
 end

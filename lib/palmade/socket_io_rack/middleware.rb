@@ -162,7 +162,6 @@ module Palmade::SocketIoRack
       constant
     end
 
-    # TODO: Add support for specfying session id
     def create_resource(rpath, transport, transport_options)
       rpath_options = @resources[rpath]
 
@@ -181,6 +180,8 @@ module Palmade::SocketIoRack
       when String
         rsc = constantize(rsc)
         resource = rsc.new(rsc_options || { })
+      when Module
+        resource = rsc
       when Class
         resource = rsc.new(rsc_options || { })
       else

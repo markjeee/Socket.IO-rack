@@ -45,8 +45,11 @@ module Palmade::SocketIoRack
       end
 
       def connected(conn)
-        # only fire connect, if we have a new session
-        @resource.fire_connect if @session.new?
+        if @session.new?
+          @resource.fire_connect
+        elsif
+          @resource.fire_resume_connection
+        end
       end
 
       def receive_data(conn, data)

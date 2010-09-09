@@ -28,8 +28,7 @@ module Palmade::SocketIoRack
         if session_id.nil? || session_id.empty?
           session = persistence.create_session
         else
-          # resume old session, create an error, if the session_id
-          # does not exist or are no longer valid
+          session = persistence.resume_session(session_id) || persistence.create_session
         end
 
         session

@@ -34,13 +34,20 @@ module Palmade::SocketIoRack
     end
 
     def fire_connect
-      # TODO: Reply with the session id
       on_connect
+      reply(session.session_id)
+      @session.persist!
+    end
+
+    def fire_resume_connection
+      on_resume_connection
+      @session.renew!
     end
 
     def fire_message(data)
-      msg = decode_message(data)
-      on_message(msg)
+      msgs = decode_messages(data)
+      msgs.each { |msg| on_message(msg) }
+      @session.renew!
     end
 
     def fire_close
@@ -53,50 +60,61 @@ module Palmade::SocketIoRack
 
     def on_message(msg); end # do nothing
     def on_connect; end # do nothing
+    def on_resume_connection; end # do nothing
     def on_close; end # do nothing
     def on_disconnected; end # do nothing
 
-    def reply(msg)
-      transport.send_data(encode_message(msg))
+    def reply(*msgs)
+      transport.send_data(encode_messages(msgs.to_a.flatten))
     end
 
     protected
 
-    # TODO: Support multiple messages
-    def decode_message(data)
+    def decode_messages(data)
+      msgs = [ ]
       data = data.dup.force_encoding('UTF-8')
 
-      case data.slice!(0,3)
-      when '~m~'
-        size, msg = data.split('~m~', 2)
-        size = size.to_i
+      loop do
+        case data.slice!(0,3)
+        when '~m~'
+          size, data = data.split('~m~', 2)
+          size = size.to_i
 
-        case msg[0,3]
-        when '~j~'
-          msg = Yajl::Parser.parse(msg[3, size - 3])
+          case data[0,3]
+          when '~j~'
+            msgs.push Yajl::Parser.parse(data[3, size - 3])
+          when '~h~'
+            raise "Heartbeat not yet supported!"
+          else
+            msgs.push data[0, size]
+          end
+
+          # let's slize the message
+          data.slice!(0, size)
+        when nil, ''
+          break
         else
-          msg = msg[0, size]
+          raise "Unsupported frame type #{data[0,3]}"
         end
-      when '~h~'
-        raise "Heartbeat not yet supported!"
-      else
-        raise "Unsupported frame type #{data[0,3]}"
       end
 
-      msg
+      msgs
     end
 
-    # TODO: Support multiple messages
-    def encode_message(msg)
-      case msg
-      when String
-        # as-is
-      else
-        msg = "~j~#{Yajl::Encoder.encode(msg)}"
-      end
+    def encode_messages(msgs)
+      data = ""
+      msgs.each do |msg|
+        case msg
+        when String
+          # as-is
+        else
+          msg = "~j~#{Yajl::Encoder.encode(msg)}"
+        end
 
-      msg_len = msg.length
-      data = "~m~#{msg_len}~m~#{msg}"
+        msg_len = msg.length
+        data += "~m~#{msg_len}~m~#{msg}"
+      end
+      data
     end
   end
 end
