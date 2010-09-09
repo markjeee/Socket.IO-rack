@@ -82,16 +82,51 @@ class SessionTest < Test::Unit::TestCase
 
   def test_session_variables
     session = @persistence.create_session
+    session.persist!
 
     test_value = "value"
-    test_key = :test
+    test_key = "test"
 
     session[test_key] = test_value
     assert(session[test_key] == test_value, "retrieved test value is not the same as the originally set value")
+    assert(session.size == 1, "size method returns wrong value")
+    assert(session.include?(test_key), "include counldn't find test key")
+    assert(session.keys.include?(test_key), "keys method returns wrong value")
+    assert(session.values.include?(test_value), "values method returns wrong values")
+
+    session.drop!
+
+    assert(session.size == 0, "size method returns wrong value (after drop)")
+    assert(!session.include?(test_key), "include counldn't find test key (after drop)")
+    assert(!session.keys.include?(test_key), "keys method returns wrong value (after drop)")
+    assert(!session.values.include?(test_value), "values method returns wrong values (after drop)")
+
+    assert_raises(Palmade::SocketIoRack::Session::SessionError,
+                  "should not be able to set in a dropped session") { session[test_key] = test_value }
   end
 
   def test_session_queues
     session = @persistence.create_session
+    session.persist!
+
+    assert(session.push_inbox("Hello", "World") == 2, "pushed count is wrong")
+    assert(session.inbox_size == 2, "inbox queue size is wrong")
+    assert(session.pop_inbox == "Hello", "1st pop value is wrong")
+    assert(session.pop_inbox == "World", "2nd pop value is wrong")
+
+    assert(session.push_outbox("Hello", "World") == 2, "pushed count is wrong")
+    assert(session.outbox_size == 2, "inbox queue size is wrong")
+    assert(session.pop_outbox == "Hello", "1st pop value is wrong")
+    assert(session.pop_outbox == "World", "2nd pop value is wrong")
+
+    session.drop!
+
+    assert_raises(Palmade::SocketIoRack::Session::SessionError,
+                  "should not be able to push to a dropped session") { session.push_inbox("Hello") }
+
+    assert(session.outbox_size == 0, "inbox queue size is wrong")
+    assert_nil(session.pop_outbox, "1st pop value is wrong (after drop)")
+    assert_nil(session.pop_outbox, "2nd pop value is wrong (after drop)")
   end
 
   protected
