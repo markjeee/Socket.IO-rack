@@ -44,8 +44,6 @@ module Palmade::SocketIoRack
       end
 
       def set_connection(conn)
-        conn[Casyncclose]
-
         super
 
         # Let's register our unbind method to the close action, just
