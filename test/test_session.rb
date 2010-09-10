@@ -1,4 +1,4 @@
-class SessionTest < Test::Unit::TestCase
+class TestSession < Test::Unit::TestCase
   def test_success
     assert(true, "WTF?!?")
   end
@@ -93,7 +93,7 @@ class SessionTest < Test::Unit::TestCase
 
     session[test_key] = test_value
     assert(session[test_key] == test_value, "retrieved test value is not the same as the originally set value")
-    assert(session.size == 1, "size method returns wrong value")
+    assert(session.size == 2, "size method returns wrong value")
     assert(session.include?(test_key), "include counldn't find test key")
     assert(session.keys.include?(test_key), "keys method returns wrong value")
     assert(session.values.include?(test_value), "values method returns wrong values")

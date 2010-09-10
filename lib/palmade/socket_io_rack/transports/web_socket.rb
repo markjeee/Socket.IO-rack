@@ -9,11 +9,6 @@ module Palmade::SocketIoRack
 
       def transport_name; Cwebsocket; end
 
-      def initialize(resource, options = { })
-        super
-        @conn = nil
-     end
-
       def handle_request(env, transport_options, persistence)
         session = setup_session(transport_options, persistence)
 
@@ -40,32 +35,12 @@ module Palmade::SocketIoRack
         end
       end
 
-      def set_connection(conn)
-        @conn = conn
-      end
-
-      def connected(conn)
-        if @session.new?
-          @resource.fire_connect
-        elsif
-          @resource.fire_resume_connection
-        end
-      end
-
-      def receive_data(conn, data)
-        @resource.fire_message(data)
-      end
-
-      def close(conn)
-        @resource.fire_close
-      end
-
-      def unbind(conn)
-        @resource.fire_disconnected
-      end
-
       def send_data(data)
-        @conn.send_data_websocket(data)
+        if connected?
+          @conn.send_data_websocket(data)
+        else
+          raise "Sending data on a disconnected connection"
+        end
       end
     end
   end

@@ -36,6 +36,7 @@ module Palmade::SocketIoRack
       when new?
         rcache.pipelined do
           rcache.hset(session_cache_key, '_created', Time.now.to_s)
+
           rcache.expire(session_cache_key, @options[:cache_expiry])
           rcache.expire(inbox_cache_key, @options[:cache_expiry])
           rcache.expire(outbox_cache_key, @options[:cache_expiry])

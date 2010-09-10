@@ -46,7 +46,7 @@ module Palmade::SocketIoRack
         @rcache
       else
         ropts = { }
-        [ :host, :port, :db ].each { |o| ropts[o] = @options[o] }
+        [ :host, :port, :db, :logger ].each { |o| ropts[o] = @options[o] }
         @rcache = Redis.new(ropts)
       end
     end

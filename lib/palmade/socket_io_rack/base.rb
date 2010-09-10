@@ -33,9 +33,15 @@ module Palmade::SocketIoRack
       @session = sess
     end
 
+    def on_message(msg); end # do nothing
+    def on_connect; end # do nothing
+    def on_resume_connection; end # do nothing
+    def on_close; end # do nothing
+    def on_disconnected; end # do nothing
+
     def fire_connect
       on_connect
-      reply(session.session_id)
+      reply_now(session.session_id)
       @session.persist!
     end
 
@@ -58,14 +64,12 @@ module Palmade::SocketIoRack
       on_disconnected
     end
 
-    def on_message(msg); end # do nothing
-    def on_connect; end # do nothing
-    def on_resume_connection; end # do nothing
-    def on_close; end # do nothing
-    def on_disconnected; end # do nothing
+    def reply_now(*msgs)
+      transport.send_data(encode_messages(msgs.to_a.flatten))
+    end
 
     def reply(*msgs)
-      transport.send_data(encode_messages(msgs.to_a.flatten))
+      session.push_outbox(encode_messages(msgs.to_a.flatten))
     end
 
     protected

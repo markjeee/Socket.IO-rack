@@ -1,87 +1,85 @@
 module Palmade::SocketIoRack
-  class XhrPolling < Base
-    Cxhrpolling = "xhr-polling".freeze
-    CREQUEST_METHOD = "REQUEST_METHOD".freeze
-    CPOST = "POST".freeze
-    CGET = "GET".freeze
-    Casynccallback = "async.callback".freeze
+  module Transports
+    class XhrPolling < Base
+      Cxhrpolling = "xhr-polling".freeze
+      CREQUEST_METHOD = "REQUEST_METHOD".freeze
+      CPOST = "POST".freeze
+      CGET = "GET".freeze
 
-    # The default setting below, sets the long-poll to 30s
-    DEFAULT_OPTIONS = {
-      :pickup_interval => 0.5, # 500ms
-      :pickup_max_retry => 60 # 60 retries @ 500ms ~ 30s
-    }
+      Casynccallback = "async.callback".freeze
+      Casyncclose = "async.close".freeze
 
-    def transport_name; Cxhrpolling; end
+      def transport_name; Cxhrpolling; end
 
-    def initialize(resource, options = { })
-      super(resource, DEFAULT_OPTIONS.merge(options))
+      def handle_request(env, transport_options, persistence)
+        session = setup_session(transport_options, persistence)
 
-      @pickup_retry = 0
-    end
+        if !session.nil?
+          @resource.setup_session(@session = session)
 
-    def handle_request(env, transport_options, persistence)
-      session = setup_session(transport_options, persistence)
+          # TODO: Implement this!!!
+          case env[CREQUEST_METHOD]
+          when CPOST
+            # incoming message from client
 
-      if !session.nil?
-        @resource.setup_session(@session = session)
+            [ true, respond_200("") ]
+          when CGET
+            set_connection(env)
 
-        # TODO: Implement this!!!
-        case env[CREQUEST_METHOD]
-        when CPOST
-          # incoming message from client
-        when CGET
-          # trigger the connected event
-          connected
+            # trigger the connected event
+            connected(env)
 
-          # pick-up messages and respond, perform async mode in case
-          # there's no queued messages
-          response = pickup_and_respond(env)
+            [ true, respond_async ]
+          end
+        else
+          [ true, respond_404("Session not found") ]
+        end
+      end
+
+      def set_connection(conn)
+        super
+
+        # Let's register our unbind method to the close action, just
+        # in case something abruptly stops or when the connection has
+        # been closed, we can do some clean-up. Note, Thin wraps the
+        # execution in ensure and rescue statements, so hopefully, we
+        # will eventually be called to perform proper clean-up
+        conn[Casyncclose].callback do
+          unbind(conn)
         end
 
-        [ true, response ]
-      else
-        [ true, respond_404("Session not found") ]
+        # Added here, just in case an error callback is called, though
+        # Thin don't seem to call this callback at all. Only calls succeed.
+        conn[Casyncclose].errback do
+          unbind(conn)
+        end
       end
-    end
 
-    # TODO: Implement picking up of messages on 'outbox' queue
-    def pickup_and_respond(env, async = false)
-      async_callback = env[Casyncallback]
+      def send_data(data)
+        if connected?
+          if defined?(@send_queue)
+            @send_queue.push(data)
+          else
+            @send_queue = [ data ]
 
-      # pick-up outgoing messages from client
-      #
-      # (1) Check if there's any pending message,
-      #     send right away if any
-
-      # (2) If there's none, then go into async mode, and loop for
-      #     it, until there's new message, with a given timeout
-      #     for the long-poll. prolly use eventmachine for this.
-
-      respond_async
-    end
-
-    def connected
-      if @session.new?
-        @resource.fire_connect
-      else
-        @resource.fire_resume_connection
+            # queue sending of final http response on next EM cycle
+            # only set it *one* time
+            EventMachine.next_tick(method(:send_final_http_response))
+          end
+        else
+          raise "Sending data on a disconnected connection"
+        end
       end
-    end
 
-    def receive_data(data)
-      @resource.fire_message(data)
-    end
-
-    def close
-      @resource.fire_close
-    end
-
-    def disconnected
-      @resource.fire_disconnected
-    end
-
-    def send_data(data)
+      def send_final_http_response
+        if connected?
+          # TODO !!!! Implement sending the final response for
+          # xhr-polling method
+          async_callback = @conn[Casynccallback]
+        else
+          raise "Can't send the final response, we're already disconnected"
+        end
+      end
     end
   end
 end
