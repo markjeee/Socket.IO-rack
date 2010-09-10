@@ -20,6 +20,8 @@ module Palmade::SocketIoRack
       DEFAULT_MULTIPART_HEADER = "#{CContentType}: #{DEFAULT_CONTENT_TYPE}".freeze
 
       DEFAULT_OPTIONS = {
+        # this is disabled by default with web sockets
+        :outbound_max_cycle => 0,
         :multipart_boundary => Csocketio
       }
 
@@ -37,9 +39,10 @@ module Palmade::SocketIoRack
           [ :succeeded, :failed ].include?(deferred_status)
         end
 
+        SEND_DATA_CODE = "send_data(@response.body.data)".freeze
         def send_data(data)
           @data = data
-          eval("send_data(@response.body.data)", callbacks.last.binding)
+          eval(SEND_DATA_CODE, callbacks.last.binding)
         ensure
           @data = nil
         end
