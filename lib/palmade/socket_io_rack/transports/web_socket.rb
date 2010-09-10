@@ -7,7 +7,16 @@ module Palmade::SocketIoRack
       CConnection = "Connection".freeze
       Cws_handler = "ws_handler".freeze
 
+      DEFAULT_OPTIONS = {
+        # this is disabled by default with web sockets
+        :outbound_max_cycle => 0
+      }
+
       def transport_name; Cwebsocket; end
+
+      def initialize(resource, options = { })
+        super(resource, DEFAULT_OPTIONS.merge(options))
+      end
 
       def handle_request(env, transport_options, persistence)
         session = setup_session(transport_options, persistence)
@@ -33,6 +42,13 @@ module Palmade::SocketIoRack
         else
           [ true, respond_404("Session not found") ]
         end
+      end
+
+      def connected(conn)
+        super
+
+        # start the outbound timer on next tick
+        EventMachine.next_tick(method(:start_outbound_timer))
       end
 
       def send_data(data)

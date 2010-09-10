@@ -15,12 +15,15 @@ module Palmade::SocketIoRack
         session = setup_session(transport_options, persistence)
 
         if !session.nil?
-          @resource.setup_session(@session = session)
+          @resource.initialize_session!(@session = session)
 
-          # TODO: Implement this!!!
           case env[CREQUEST_METHOD]
           when CPOST
-            # incoming message from client
+            # incoming message from client, can be optimized to just
+            # parse the encoded post form data. but i'm lazy to do it
+            # for now, so, let's just take advanage of Rack::Request.
+            pd = Rack::Request.new(env).POST["data"]
+            receive_data(env, pd) unless pd.nil? || pd.empty?
 
             [ true, respond_200("") ]
           when CGET
@@ -30,6 +33,8 @@ module Palmade::SocketIoRack
             connected(env)
 
             [ true, respond_async ]
+          else
+            [ false, nil ]
           end
         else
           [ true, respond_404("Session not found") ]
@@ -55,9 +60,19 @@ module Palmade::SocketIoRack
         end
       end
 
+      def connected(conn)
+        super
+
+        # start the outbound timer on next tick, unless there are
+        # already some reply already queued
+        unless send_body_ready?
+          EventMachine.next_tick(method(:start_outbound_timer))
+        end
+      end
+
       def send_data(data)
         if connected?
-          if defined?(@send_body)
+          if send_body_ready?
             @send_body.push(data)
           else
             @send_body = [ data ]
@@ -73,12 +88,26 @@ module Palmade::SocketIoRack
 
       def send_final_http_response
         if connected?
-          # TODO !!!! Implement sending the final response for
-          # xhr-polling method
-          async_callback = @conn[Casynccallback]
+          @conn[Casynccallback].call(respond_200(@send_body))
         else
           raise "Can't send the final response, we're already disconnected"
         end
+      end
+
+      def unbind(conn)
+        # just do some clean-up as needed
+        @send_body.clear if defined?(@send_body)
+        @send_body = nil
+
+        super
+      end
+
+      def send_body_ready?
+        defined?(@send_body) && !@send_body.nil?
+      end
+
+      def maxed_outbound_timer
+        send_data("") if connected?
       end
     end
   end

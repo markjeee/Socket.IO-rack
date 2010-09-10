@@ -1,4 +1,4 @@
-class TestBase < Test::Unit::TestCase
+class BaseTest < Test::Unit::TestCase
   def setup
   end
 

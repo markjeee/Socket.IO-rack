@@ -4,7 +4,9 @@ module Palmade::SocketIoRack
       DEFAULT_OPTIONS = {
         :outbound_interval => 0.5, # 500ms
         :outbound_burst => 25, # send a max of 25 messages every cycle
-        :outbound_max_cycle => 60 # 60 retries @ 500ms ~ 30s
+
+        # set this max value to 0, to disable
+        :outbound_max_cycle => 20 # 20 retries @ 500ms ~ 10s
       }
 
       CContentType = "Content-Type".freeze
@@ -24,6 +26,7 @@ module Palmade::SocketIoRack
         @conn = nil
         @connected = false
         @outbound_timer = nil
+        @outbound_cycle_count = 0
       end
 
       def handle_request(env, transport_options, persistence)
@@ -42,9 +45,6 @@ module Palmade::SocketIoRack
         elsif
           @resource.fire_resume_connection
         end
-
-        # start the outbound timer on next tick
-        EventMachine.next_tick(method(:start_outbound_timer))
       end
 
       def receive_data(conn, data)
@@ -68,24 +68,36 @@ module Palmade::SocketIoRack
       protected
 
       def perform_outbound_task
+        @outbound_timer = nil
+        burst_count = 0
+
         # in case we were disconnected while we're asleep, let's bail
         # out right away
         return unless connected?
 
-        burst_count = 0
-        while(m = @session.pop_outbox)
-          send_data(m)
+        begin
+          while(m = @session.pop_outbox)
+            send_data(m)
 
-          burst_count += 1
-          break if burst_count >= @options[:outbound_burst]
+            burst_count += 1
+            break if burst_count >= @options[:outbound_burst]
+          end
+        ensure
+          @outbound_cycle_count += 1
+
+          if connected?
+            if @options[:outbound_max_cycle] <= 0 ||
+                @options[:outbound_max_cycle] > @outbound_cycle_count
+              # as much as possible, let's *ensure* we've enqueued the next
+              # pickup cycle
+              restart_outbound_timer(burst_count > 0)
+            else
+              maxed_outbound_timer
+            end
+          else
+            # just do nothing
+          end
         end
-
-        # TODO !!! add support for maximum outbound cycle
-
-      ensure
-        # as much as possible, let's *ensure* we've enqueued the next
-        # pickup cycle
-        restart_outbound_timer if connected?
       end
 
       def setup_session(transport_options, persistence)
@@ -119,6 +131,10 @@ module Palmade::SocketIoRack
         [ -1, { }, [ ] ]
       end
 
+      def maxed_outbound_timer
+        raise "Not implemented"
+      end
+
       def stop_outbound_timer
         unless @outbound_timer.nil?
           EventMachine.cancel_timer(@outbound_timer)
@@ -126,11 +142,16 @@ module Palmade::SocketIoRack
         end
       end
 
-      def restart_outbound_timer
+      def restart_outbound_timer(next_tick = false)
         if @outbound_timer.nil?
-          # only re-queue if we're still connected
-          EventMachine.add_timer(@options[:outboud_interval],
-                                 method(:perform_outbound_task))
+          if next_tick
+            # only re-queue if we're still connected
+            EventMachine.next_tick(method(:perform_outbound_task))
+          else
+            # only re-queue if we're still connected
+            EventMachine.add_timer(@options[:outbound_interval],
+                                   method(:perform_outbound_task))
+          end
         else
           raise "Looks like the inbox pick-up timer has already been started. Should not be!"
         end

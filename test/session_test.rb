@@ -1,4 +1,4 @@
-class TestSession < Test::Unit::TestCase
+class SessionTest < Test::Unit::TestCase
   def test_success
     assert(true, "WTF?!?")
   end
@@ -55,7 +55,7 @@ class TestSession < Test::Unit::TestCase
 
     created = rcache.hget(session_cache_key, "_created")
     assert(created.kind_of?(String), "created field not set properly")
-    assert(Time.now - Time.parse(created) < 1, "created time is too far away")
+    assert(Time.now - Time.parse(created) < 2, "created time is too far away")
 
     assert(rcache.ttl(session_cache_key) <= session.options[:cache_expiry], "expire is set way into the future")
 

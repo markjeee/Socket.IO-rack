@@ -1,15 +1,4 @@
-class TestTransport < Test::Unit::TestCase
-  class MockWebSocketConnection
-    attr_accessor :data
-    def initialize
-      @data = [ ]
-    end
-
-    def send_data_websocket(data)
-      @data.push(data)
-    end
-  end
-
+class WebSocketTest < Test::Unit::TestCase
   def setup
     gem 'eventmachine', '>= 0.12.10'
     require 'eventmachine'
@@ -19,7 +8,7 @@ class TestTransport < Test::Unit::TestCase
     @logger ||= Logger.new(STDOUT)
   end
 
-  def test_websocket_new_connect
+  def test_new_connect
     EM.run do
       EM.next_tick do
         p = Palmade::SocketIoRack::Persistence.new
@@ -53,7 +42,7 @@ class TestTransport < Test::Unit::TestCase
     end
   end
 
-  def test_websocket_resume_connect
+  def test_resume_connect
     EM.run do
       EM.next_tick do
         p = Palmade::SocketIoRack::Persistence.new(:logger => nil)
@@ -108,8 +97,9 @@ class TestTransport < Test::Unit::TestCase
           assert(session.pop_inbox == "Go", "pushed inbox message is different on resumed session")
 
           EM.next_tick do
-            # the msgs on outbox should be pushed to the websocket connection
-            assert(ws_conn.data.size == 4, "outbox msg was not pushed to the connection (resumed connection)")
+            # the msgs on outbox should be pushed to the websocket
+            # connection
+            assert(ws_conn.data.size == 3, "outbox msg was not pushed to the connection (resumed connection)")
             assert(ws_conn.data.last == "Yohooo", "pushed msg is wrong")
 
             EM.stop
