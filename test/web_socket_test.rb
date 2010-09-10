@@ -109,7 +109,7 @@ class TestTransport < Test::Unit::TestCase
 
           EM.next_tick do
             # the msgs on outbox should be pushed to the websocket connection
-            assert(ws_conn.data.size == 3, "outbox msg was not pushed to the connection (resumed connection)")
+            assert(ws_conn.data.size == 4, "outbox msg was not pushed to the connection (resumed connection)")
             assert(ws_conn.data.last == "Yohooo", "pushed msg is wrong")
 
             EM.stop
@@ -138,8 +138,9 @@ class TestTransport < Test::Unit::TestCase
         session = b.session
         b.reply("Hello", "World")
 
-        assert(b.session.outbox_size == 1, "outbox queue is empty")
-        assert(b.session.pop_outbox.kind_of?(String), "outbox item is not a string")
+        assert(ws_conn.data.size == 2, "outbox queue is empty")
+        assert(ws_conn.data[0].kind_of?(String), "outbox item is not a string")
+        assert(ws_conn.data[1].kind_of?(String), "outbox item is not a string")
 
         EM.stop
       end

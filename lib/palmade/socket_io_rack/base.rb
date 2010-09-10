@@ -41,12 +41,20 @@ module Palmade::SocketIoRack
 
     def fire_connect
       on_connect
-      reply_now(session.session_id)
+      reply(session.session_id)
+
       @session.persist!
     end
 
     def fire_resume_connection
       on_resume_connection
+
+      # TODO: Check if we have to do this every time, or only on the
+      # first connection. This might pose a problem with xhr-polling,
+      # which always tries to re-connect. CHECK if Socket.IO always
+      # expects the first message to be the session id.
+      reply(session.session_id)
+
       @session.renew!
     end
 
@@ -64,11 +72,11 @@ module Palmade::SocketIoRack
       on_disconnected
     end
 
-    def reply_now(*msgs)
+    def reply(*msgs)
       transport.send_data(encode_messages(msgs.to_a.flatten))
     end
 
-    def reply(*msgs)
+    def deferred_reply(*msgs)
       session.push_outbox(encode_messages(msgs.to_a.flatten))
     end
 

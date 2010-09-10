@@ -57,10 +57,10 @@ module Palmade::SocketIoRack
 
       def send_data(data)
         if connected?
-          if defined?(@send_queue)
-            @send_queue.push(data)
+          if defined?(@send_body)
+            @send_body.push(data)
           else
-            @send_queue = [ data ]
+            @send_body = [ data ]
 
             # queue sending of final http response on next EM cycle
             # only set it *one* time
