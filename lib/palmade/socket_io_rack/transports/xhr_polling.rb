@@ -1,3 +1,5 @@
+# -*- encoding: binary -*-
+
 module Palmade::SocketIoRack
   module Transports
     class XhrPolling < Base
@@ -25,7 +27,7 @@ module Palmade::SocketIoRack
             pd = Rack::Request.new(env).POST["data"]
             receive_data(env, pd) unless pd.nil? || pd.empty?
 
-            [ true, respond_200("") ]
+            [ true, respond_200("ok") ]
           when CGET
             set_connection(env)
 
@@ -42,6 +44,8 @@ module Palmade::SocketIoRack
       end
 
       def set_connection(conn)
+        conn[Casyncclose]
+
         super
 
         # Let's register our unbind method to the close action, just

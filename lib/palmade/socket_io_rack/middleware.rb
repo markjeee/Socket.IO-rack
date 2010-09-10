@@ -24,12 +24,15 @@ module Palmade::SocketIoRack
     CHTTP_CONNECTION = "HTTP_CONNECTION".freeze
     Cxhrpolling = "xhr-polling".freeze
     Cws_handler = "ws_handler".freeze
+    Cxhrmultipart = "xhr-multipart".freeze
 
     CContentType = "Content-Type".freeze
     CCTtext_plain = "text/plain".freeze
 
     SUPPORTED_TRANSPORTS = [ Cwebsocket,
-                             Cxhrpolling ]
+                             Cxhrpolling,
+                             Cxhrmultipart
+                           ]
 
     def initialize(app, options = { })
       @options = DEFAULT_OPTIONS.merge(options)
@@ -85,6 +88,8 @@ module Palmade::SocketIoRack
                   performed, response = perform_websocket(env, rpath, transport, transport_options)
                 when Cxhrpolling
                   performed, response = perform_xhr_polling(env, rpath, transport, transport_options)
+                when Cxhrmultipart
+                  performed, response = perform_xhr_multipart(env, rpath, transport, transport_options)
                 end
               else
                 logger.error { "!!! Socket.IO ERROR: Transport not supported #{rpath} #{transport} #{transport_options}" }
@@ -135,6 +140,22 @@ module Palmade::SocketIoRack
       [ performed, response ]
     end
 
+    def perform_xhr_multipart(env, rpath, transport, transport_options)
+      performed = false
+      response = nil
+
+      if [ CPOST, CGET ].include?(env[CREQUEST_METHOD])
+        resource = create_resource(rpath,
+                                   transport,
+                                   transport_options)
+
+        performed, response = resource.
+          initialize_transport!(Cxhrmultipart).handle_request(env, transport_options, persistence)
+      end
+
+      [ performed, response ]
+    end
+
     def resource_paths
       if @resource_paths.nil?
         @resource_paths = [ ]
@@ -151,8 +172,9 @@ module Palmade::SocketIoRack
     end
 
     # Stolen from ActiveSupport
+    CConstantsDelimeter = "::".freeze
     def constantize(word)
-      names = word.split('::')
+      names = word.split(CConstantsDelimeter)
       names.shift if names.empty? || names.first.empty?
 
       constant = Object

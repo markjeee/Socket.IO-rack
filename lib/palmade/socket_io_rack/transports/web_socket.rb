@@ -1,3 +1,5 @@
+# -*- encoding: binary -*-
+
 module Palmade::SocketIoRack
   module Transports
     class WebSocket < Base

@@ -1,3 +1,5 @@
+# -*- encoding: binary -*-
+
 module Palmade::SocketIoRack
   module Transports
     class Base
@@ -11,9 +13,10 @@ module Palmade::SocketIoRack
 
       CContentType = "Content-Type".freeze
       CCTtext_plain = "text/plain".freeze
+      DEFAULT_CONTENT_TYPE = "#{CCTtext_plain}; charset=utf-8".freeze
 
       DEFAULT_HEADERS = {
-        CContentType => CCTtext_plain
+        CContentType => DEFAULT_CONTENT_TYPE
       }
 
       def connected?; @connected; end
@@ -106,7 +109,7 @@ module Palmade::SocketIoRack
 
         unless transport_options.nil?
           session_id, tm = transport_options[1..-1].split('/', 2)
-          session_id = session_id.strip
+          session_id = session_id.strip unless session_id.nil?
         end
 
         if session_id.nil? || session_id.empty?
@@ -119,7 +122,11 @@ module Palmade::SocketIoRack
       end
 
       def respond_200(msg, headers = { })
-        [ 200, DEFAULT_HEADERS.merge(headers), [ msg ].flatten ]
+        if msg.is_a?(String) || msg.is_a?(Array)
+          [ 200, DEFAULT_HEADERS.merge(headers), [ msg ].flatten ]
+        else
+          [ 200, DEFAULT_HEADERS.merge(headers), msg ]
+        end
       end
 
       def respond_404(msg, headers = { })

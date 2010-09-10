@@ -9,6 +9,7 @@ module Palmade::SocketIoRack
 
     Cxhrpolling = "xhr-polling".freeze
     Cwebsocket = "websocket".freeze
+    Cxhrmultipart = "xhr-multipart".freeze
 
     def initialize(options = { })
       @options = DEFAULT_OPTIONS.merge(options)
@@ -22,6 +23,8 @@ module Palmade::SocketIoRack
         @transport = Transports::WebSocket.new(self, to)
       when Cxhrpolling
         @transport = Transports::XhrPolling.new(self, to)
+      when Cxhrmultipart
+        @transport = Transports::XhrMultipart.new(self, to)
       else
         raise "Unsupported transport #{tn}"
       end
