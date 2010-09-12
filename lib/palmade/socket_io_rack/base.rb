@@ -67,7 +67,7 @@ module Palmade::SocketIoRack
         when Chframe
           hb = msg[3..-1]
 
-          puts "Got HB: #{hb}"
+          # puts "Got HB: #{hb}"
           if session['heartbeat'] == hb
             # just got heartbeat
             session.delete('heartbeat')
@@ -101,7 +101,7 @@ module Palmade::SocketIoRack
         hb = Time.now.to_s
         session['heartbeat'] = hb
 
-        puts "Sending HB: #{hb}"
+        # puts "Sending HB: #{hb}"
         reply("#{Chframe}#{hb}")
       else
         # TODO: Add support for handling if a previously sent
