@@ -8,6 +8,32 @@ require 'rack'
 root_path = File.expand_path(File.join(File.dirname(__FILE__), '..'))
 require File.join(root_path, 'lib/palmade/socket_io_rack')
 
+class MockWebSocketHandler
+  attr_reader :conn
+  attr_reader :reader
+
+  def set_connection(conn)
+    @conn = conn
+  end
+
+  def connected(conn)
+  end
+
+  def recieve_data(conn, data)
+    (@data ||= [ ]).push(data)
+  end
+
+  def close(conn)
+  end
+
+  def unbind(conn)
+    @conn = nil
+  end
+
+  def connected?
+    !@conn.nil?
+  end
+end
 
 class MockWebSocketConnection
   attr_accessor :data

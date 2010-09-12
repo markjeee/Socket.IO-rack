@@ -1,0 +1,45 @@
+#!/usr/bin/env ruby
+
+# change this to something else, if deploying as a gem, or whatever.
+siorack_dir = File.expand_path(File.join(File.dirname(__FILE__), '..'))
+$:.unshift(File.join(siorack_dir, 'lib'))
+
+require 'rubygems'
+
+gem 'thin'
+require 'thin'
+
+gem 'redis'
+require 'redis'
+
+require 'palmade/socket_io_rack'
+Thin.send(:include, Palmade::SocketIoRack::Mixins::Thin)
+
+class Firehose < Palmade::SocketIoRack::Base
+  def on_connect
+    EM.add_timer(30) do
+      reply "This message should show-up 30 secs later"
+    end
+
+    EM.add_timer(60) do
+      reply "This message should show-up 60 secs later"
+    end
+  end
+
+  def on_message(msg)
+    reply "Hello #{msg}"
+  end
+end
+
+Thin::Server.start('127.0.0.1', 3000) do
+  use Rack::CommonLogger
+
+  map '/' do
+    use(Palmade::SocketIoRack::Middleware,
+        :resources =>  {
+          '/firehose' => 'Firehose'
+        })
+
+    run Rack::File.new(File.join(siorack_dir, 'examples'))
+  end
+end

@@ -11,6 +11,10 @@ module Palmade::SocketIoRack
     Cwebsocket = "websocket".freeze
     Cxhrmultipart = "xhr-multipart".freeze
 
+    Cmframe = "~m~".freeze
+    Chframe = "~h~".freeze
+    Cjframe = "~j~".freeze
+
     def initialize(options = { })
       @options = DEFAULT_OPTIONS.merge(options)
       @transport = nil
@@ -41,6 +45,7 @@ module Palmade::SocketIoRack
     def on_resume_connection; end # do nothing
     def on_close; end # do nothing
     def on_disconnected; end # do nothing
+    def on_heartbeat(cycle_count); end # do nothing
 
     def fire_connect
       on_connect
@@ -51,12 +56,29 @@ module Palmade::SocketIoRack
 
     def fire_resume_connection
       on_resume_connection
+
       @session.renew!
     end
 
     def fire_message(data)
       msgs = decode_messages(data)
-      msgs.each { |msg| on_message(msg) }
+      msgs.each do |msg|
+        case msg[0,3]
+        when Chframe
+          hb = msg[3..-1]
+
+          puts "Got HB: #{hb}"
+          if session['heartbeat'] == hb
+            # just got heartbeat
+            session.delete('heartbeat')
+          else
+            # TODO: Add support for wrong heartbeat message
+          end
+        else
+          on_message(msg)
+        end
+      end
+
       @session.renew!
     end
 
@@ -66,6 +88,25 @@ module Palmade::SocketIoRack
 
     def fire_disconnected
       on_disconnected
+
+      # let's remove the reference to the transport, to allow the
+      # garbase collector to reclaim it
+      @transport = nil
+    end
+
+    def fire_heartbeat(cycle_count)
+      on_heartbeat(cycle_count)
+
+      unless session.include?('heartbeat')
+        hb = Time.now.to_s
+        session['heartbeat'] = hb
+
+        puts "Sending HB: #{hb}"
+        reply("#{Chframe}#{hb}")
+      else
+        # TODO: Add support for handling if a previously sent
+        # heartbeat did not get a reply
+      end
     end
 
     def reply(*msgs)
@@ -100,7 +141,8 @@ module Palmade::SocketIoRack
           when '~j~'
             msgs.push Yajl::Parser.parse(data[3, size - 3])
           when '~h~'
-            raise "Heartbeat not yet supported!"
+            # let's have our caller process the message
+            msgs.push data[0, size]
           else
             msgs.push data[0, size]
           end

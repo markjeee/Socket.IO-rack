@@ -1,3 +1,16 @@
+*STATUS*
+
+Super alpha, super experimental, not to be used yet for real work, unless you want to hack in to the code and help me get it to production ready. :)
+
+*REQUIREMENTS*
+
+You need the following gems:
+
+* thin
+* redis
+
+And also a running redis installation, with at least version 2.1.3 (yes, you'll have to use the trunk version).
+
 *GOAL*
 
 Add this in your config/environment.rb in Rails, or just use the

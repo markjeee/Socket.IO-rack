@@ -4,11 +4,19 @@ module Palmade::SocketIoRack
   module Transports
     class Base
       DEFAULT_OPTIONS = {
-        :outbound_interval => 0.5, # 500ms
-        :outbound_burst => 25, # send a max of 25 messages every cycle
+        # default: 500ms pick up interval
+        :outbound_interval => 0.5,
+
+        # send a max of 25 messages every cycle
+        :outbound_burst => 25,
 
         # set this max value to 0, to disable
-        :outbound_max_cycle => 20 # 20 retries @ 500ms ~ 10s
+        # default: 20 retries @ 500ms ~ 10s
+        :outbound_max_cycle => 20,
+
+        # set this value to 0, to disable
+        # default: 4 (4 continous cycle of no traffic)
+        :heartbeat_cycle_interval => 4
       }
 
       CContentType = "Content-Type".freeze
@@ -30,6 +38,7 @@ module Palmade::SocketIoRack
         @connected = false
         @outbound_timer = nil
         @outbound_cycle_count = 0
+        @heartbeat_cycle_count = 0
       end
 
       def handle_request(env, transport_options, persistence)
@@ -68,6 +77,10 @@ module Palmade::SocketIoRack
         @resource.fire_disconnected
       end
 
+      def heartbeat(cycle_count)
+        @resource.fire_heartbeat(cycle_count)
+      end
+
       protected
 
       def perform_outbound_task
@@ -87,8 +100,18 @@ module Palmade::SocketIoRack
           end
         ensure
           @outbound_cycle_count += 1
+          if burst_count == 0
+            @heartbeat_cycle_count += 1
+          else
+            @heartbeat_cycle_count = 0
+          end
 
           if connected?
+            if @options[:heartbeat_cycle_interval] >= 0 && @heartbeat_cycle_count > 0 &&
+                @heartbeat_cycle_count % @options[:heartbeat_cycle_interval] == 0
+              heartbeat(@heartbeat_cycle_count)
+            end
+
             if @options[:outbound_max_cycle] <= 0 ||
                 @options[:outbound_max_cycle] > @outbound_cycle_count
               # as much as possible, let's *ensure* we've enqueued the next

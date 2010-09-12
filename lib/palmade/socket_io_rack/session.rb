@@ -131,6 +131,11 @@ module Palmade::SocketIoRack
     end
     alias :exists? :include?
 
+    # HDEL
+    def delete(k)
+      rcache.hdel(session_cache_key, k.to_s)
+    end
+
     # For reference sake:
     #
     # * inbox queue are for messages *from* the clients, or web browser

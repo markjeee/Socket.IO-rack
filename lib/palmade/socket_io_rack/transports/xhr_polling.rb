@@ -11,6 +11,17 @@ module Palmade::SocketIoRack
       Casynccallback = "async.callback".freeze
       Casyncclose = "async.close".freeze
 
+      DEFAULT_OPTIONS = {
+        # disable heartbeat interval by default, since
+        # we're just going to disconnect due to a maxed outbound
+        # check cycle
+        :heartbeat_interval => 0
+      }
+
+      def initialize(resource, options = { })
+        super(resource, DEFAULT_OPTIONS.merge(options))
+      end
+
       def transport_name; Cxhrpolling; end
 
       def handle_request(env, transport_options, persistence)
