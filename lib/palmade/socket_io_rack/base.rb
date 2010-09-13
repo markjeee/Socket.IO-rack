@@ -129,7 +129,7 @@ module Palmade::SocketIoRack
 
     def decode_messages(data)
       msgs = [ ]
-      data = data.dup.force_encoding('UTF-8')
+      data = data.dup.force_encoding('UTF-8') if RUBY_VERSION >= "1.9"
 
       loop do
         case data.slice!(0,3)
