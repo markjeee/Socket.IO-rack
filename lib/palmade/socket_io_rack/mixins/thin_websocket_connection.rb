@@ -145,7 +145,8 @@ module Palmade::SocketIoRack
       else
         def send_data_websocket(data)
           trace { "WS SND: #{data}" }
-          send_data(Cws_frame_message % data.dup.force_encoding(Cbinary))
+          data = data.dup.force_encoding(Cbinary) if RUBY_VERSION >= "1.9"
+          send_data(Cws_frame_message % data)
         end
       end
 
