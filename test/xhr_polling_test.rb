@@ -11,7 +11,7 @@ class XhrPollingTest < Test::Unit::TestCase
   def test_new_connect
     EM.run do
       EM.next_tick do
-        p = Palmade::SocketIoRack::Persistence.new
+        p = Palmade::SocketIoRack::Persistence.new(:store => :redis)
         b = Palmade::SocketIoRack::Base.new
 
         env = MockWebRequest.new("REQUEST_METHOD" => "GET") do |result|

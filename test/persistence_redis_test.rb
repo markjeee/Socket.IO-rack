@@ -12,7 +12,8 @@ class PersistenceRedisTest < Test::Unit::TestCase
   end
 
   def test_rcache
-    rcache = @persistence.rcache
+    rcache = @persistence.store.send(:rcache)
+
     assert_not_nil(rcache, "Redis cache not defined on persistence")
     assert(rcache.kind_of?(Redis), "rcache is not a Redis client object")
 
@@ -32,12 +33,15 @@ class PersistenceRedisTest < Test::Unit::TestCase
     assert(session.session_id.kind_of?(String), "session id is not a string")
     assert(session.session_id.length == (session.options[:sidbits] / 4), "session_id is not of proper length")
 
-    assert(session.send(:session_cache_key).kind_of?(String), "invalid session cache key value")
-    assert(session.send(:session_cache_key).include?(session.options[:cache_key]), "invalid session cache key value")
-    assert(session.send(:inbox_cache_key).kind_of?(String), "invalid inbox cache key value")
-    assert(session.send(:inbox_cache_key).include?(session.send(:session_cache_key)), "invalid inbox cache key value")
-    assert(session.send(:outbox_cache_key).kind_of?(String), "invalid outbox cache key value")
-    assert(session.send(:outbox_cache_key).include?(session.send(:session_cache_key)), "invalid inbox cache key value")
+    store = session.store
+    scache_key = store.send(:session_cache_key, session.session_id)
+
+    assert(scache_key.kind_of?(String), "invalid session cache key value")
+    assert(scache_key.include?(session.options[:cache_key]), "invalid session cache key value")
+    assert(store.send(:inbox_cache_key, scache_key).kind_of?(String), "invalid inbox cache key value")
+    assert(store.send(:inbox_cache_key, scache_key).include?(scache_key), "invalid inbox cache key value")
+    assert(store.send(:outbox_cache_key, scache_key).kind_of?(String), "invalid outbox cache key value")
+    assert(store.send(:outbox_cache_key, scache_key).include?(scache_key), "invalid inbox cache key value")
 
     assert(session.options[:cache_expiry] == @persistence.options[:cache_expiry], "created session has different option values")
     assert(session.options[:sidbits] == @persistence.options[:sidbits], "created session has different option values")
@@ -46,9 +50,10 @@ class PersistenceRedisTest < Test::Unit::TestCase
 
   def test_session_persist
     session = @persistence.create_session
+    store = session.store
 
-    rcache = session.send(:rcache)
-    session_cache_key = session.send(:session_cache_key)
+    rcache = store.send(:rcache)
+    session_cache_key = store.send(:session_cache_key, session.session_id)
 
     assert(session.persist! == session, "returned value of persist! is wrong")
     assert(rcache.exists(session_cache_key), "persisted session key does not exists")
@@ -61,15 +66,17 @@ class PersistenceRedisTest < Test::Unit::TestCase
 
     assert(session.drop! == session, "returned value of drop! is wrong")
     assert(!rcache.exists(session_cache_key), "drop did not removed session cache key")
-    assert(!rcache.exists(session.send(:inbox_cache_key)), "drop did not removed inbox cache key")
-    assert(!rcache.exists(session.send(:outbox_cache_key)), "drop did not removed outbox cache key")
+    assert(!rcache.exists(store.send(:inbox_cache_key, session_cache_key)), "drop did not removed inbox cache key")
+    assert(!rcache.exists(store.send(:outbox_cache_key, session_cache_key)), "drop did not removed outbox cache key")
   end
 
   def test_session_resume
     session = @persistence.create_session
-    rcache = session.send(:rcache)
+    store = session.store
+
+    rcache = store.send(:rcache)
     session_id = session.session_id
-    session_cache_key = session.send(:session_cache_key)
+    session_cache_key = store.send(:session_cache_key, session_id)
 
     session.persist!
 
@@ -136,6 +143,6 @@ class PersistenceRedisTest < Test::Unit::TestCase
   protected
 
   def create_persistence
-    @persistence = Palmade::SocketIoRack::Persistence.new
+    @persistence = Palmade::SocketIoRack::Persistence.new(:store => :redis)
   end
 end

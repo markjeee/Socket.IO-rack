@@ -11,7 +11,7 @@ class WebSocketTest < Test::Unit::TestCase
   def test_new_connect
     EM.run do
       EM.next_tick do
-        p = Palmade::SocketIoRack::Persistence.new
+        p = Palmade::SocketIoRack::Persistence.new(:store => :redis)
         b = Palmade::SocketIoRack::Base.new
         ws_conn = MockWebSocketConnection.new
 
@@ -45,7 +45,7 @@ class WebSocketTest < Test::Unit::TestCase
   def test_resume_connect
     EM.run do
       EM.next_tick do
-        p = Palmade::SocketIoRack::Persistence.new(:logger => nil)
+        p = Palmade::SocketIoRack::Persistence.new(:logger => nil, :store => :redis)
 
         # Step (1): Let's create a new session
         b = Palmade::SocketIoRack::Base.new
@@ -112,7 +112,7 @@ class WebSocketTest < Test::Unit::TestCase
   def test_reply_with_websocket
     EM.run do
       EM.next_tick do
-        p = Palmade::SocketIoRack::Persistence.new
+        p = Palmade::SocketIoRack::Persistence.new(:store => :redis)
         b = Palmade::SocketIoRack::Base.new
 
         wst = b.initialize_transport!('websocket')

@@ -11,7 +11,7 @@ class XhrMultipartTest < Test::Unit::TestCase
   def test_new_connect
     EM.run do
       EM.next_tick do
-        p = Palmade::SocketIoRack::Persistence.new
+        p = Palmade::SocketIoRack::Persistence.new(:store => :redis)
         b = Palmade::SocketIoRack::Base.new
 
         drb_klass = Palmade::SocketIoRack::Transports::XhrMultipart::DeferredResponseBody

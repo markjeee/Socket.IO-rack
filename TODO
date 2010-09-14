@@ -1,6 +1,6 @@
-* Add support for WebSocket draft #75
-* Add support for disconnect timeout event on the server side
 * Implement a sample chat server that uses the same chat.html from the Socket.IO-node package
   - using single-thread, evented mode
   - support storing session in memory
+* Add support for disconnect timeout event on the server side
 * Implement other transports: flashsocket, jsonpolling, iframe
+* Add support for WebSocket draft #75

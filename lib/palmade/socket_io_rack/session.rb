@@ -3,17 +3,15 @@ module Palmade::SocketIoRack
     class SessionError < StandardError; end
 
     DEFAULT_OPTIONS = {
-      :sidbits => 128,
-      :cache_key => 'Socket.IO-rack/persistence'.freeze,
-      :cache_expiry => 60 * 60, # default: 1 hr
+      :sidbits => 128
     }
 
     attr_reader :options
     attr_reader :session_id
+    attr_reader :store
 
-    def initialize(persistence, sess_id = nil, options = { })
+    def initialize(store, sess_id = nil, options = { })
       @options = DEFAULT_OPTIONS.merge(options)
-      @persistence = persistence
       @dropped = false
 
       if sess_id.nil?
@@ -23,6 +21,8 @@ module Palmade::SocketIoRack
         not_new!
         @session_id = sess_id
       end
+
+      @store = store
     end
 
     def new?; @new; end
@@ -34,14 +34,7 @@ module Palmade::SocketIoRack
     def persist!
       case
       when new?
-        rcache.pipelined do
-          rcache.hset(session_cache_key, '_created', Time.now.to_s)
-
-          rcache.expire(session_cache_key, @options[:cache_expiry])
-          rcache.expire(inbox_cache_key, @options[:cache_expiry])
-          rcache.expire(outbox_cache_key, @options[:cache_expiry])
-        end
-
+        @store.persist!(self)
         not_new!
       when dropped?
         raise SessionError, "Can't persist, this has been dropped already."
@@ -61,15 +54,10 @@ module Palmade::SocketIoRack
         raise SessionError, "Already dropped. No need to drop again."
       else
         @dropped = true
-
-        rcache.pipelined do
-          rcache.del(session_cache_key)
-          rcache.del(inbox_cache_key)
-          rcache.del(outbox_cache_key)
-        end
-
-        self
+        @store.drop!(self)
       end
+
+      self
     end
     alias :drop :drop!
 
@@ -81,11 +69,7 @@ module Palmade::SocketIoRack
       when dropped?
         raise SessionError, "Can't renew, this has been dropped."
       else
-        rcache.pipelined do
-          rcache.expire(session_cache_key, @options[:cache_expiry])
-          rcache.expire(inbox_cache_key, @options[:cache_expiry])
-          rcache.expire(outbox_cache_key, @options[:cache_expiry])
-        end
+        @store.renew!(self)
       end
 
       self
@@ -100,40 +84,40 @@ module Palmade::SocketIoRack
       when dropped?
         raise SessionError, "Alread dropped."
       else
-        rcache.hset(session_cache_key, k.to_s, v)
+        @store.set(self, k, v)
       end
     end
 
     # HGET: Get hash value
     def [](k)
-      rcache.hget(session_cache_key, k.to_s)
+      @store.get(self, k)
     end
 
     # HKEYS
     def keys
-      rcache.hkeys(session_cache_key)
+      @store.keys(self)
     end
 
     # HVALS
     def values
-      rcache.hvals(session_cache_key)
+      @store.values(self)
     end
 
     # HLEN
     def size
-      rcache.hlen(session_cache_key)
+      @store.size(self)
     end
     alias :length :size
 
     # HEXISTS
     def include?(k)
-      rcache.hexists(session_cache_key, k.to_s)
+      @store.include?(self, k)
     end
     alias :exists? :include?
 
     # HDEL
     def delete(k)
-      rcache.hdel(session_cache_key, k.to_s)
+      @store.delete(self, k)
     end
 
     # For reference sake:
@@ -145,84 +129,47 @@ module Palmade::SocketIoRack
 
     # save to inbox
     def push_inbox(*msgs)
-      pushed_count = 0
-
       case
       when new?
         raise SessionError, "Can't push to a non-persisted session"
       when dropped?
         raise SessionError, "Can't push to a dropped session"
       else
-        msgs = msgs.to_a.flatten
-        rcache.pipelined do
-          msgs.each do |m|
-            rcache.rpush(inbox_cache_key, m)
-            pushed_count += 1
-          end
-        end
+        @store.push_inbox(self, *msgs)
       end
-
-      pushed_count
     end
 
     # get msg from inbox queue
     def pop_inbox
-      rcache.lpop(inbox_cache_key)
+      @store.pop_inbox(self)
     end
 
     def inbox_size
-      rcache.llen(inbox_cache_key)
+      @store.inbox_size(self)
     end
 
     # save to outbox
     def push_outbox(*msgs)
-      pushed_count = 0
-
       case
       when new?
         raise SessionError, "Can't push to a non-persisted session"
       when dropped?
         raise SessionError, "Can't push to a dropped session"
       else
-        msgs = msgs.to_a.flatten
-        rcache.pipelined do
-          msgs.each do |m|
-            rcache.rpush(outbox_cache_key, m)
-            pushed_count += 1
-          end
-        end
+        @store.push_outbox(self, *msgs)
       end
-
-      pushed_count
     end
 
     # get msg from outbox queue
     def pop_outbox
-      rcache.lpop(outbox_cache_key)
+      @store.pop_outbox(self)
     end
 
     def outbox_size
-      rcache.llen(outbox_cache_key)
+      @store.outbox_size(self)
     end
 
     protected
-
-    def rcache; @persistence.rcache; end
-
-    # session, points to a HASH value in Redis store
-    def session_cache_key
-      @session_cache_key ||= "#{@options[:cache_key]}/#{session_id}".freeze
-    end
-
-    # outbox: points to a LIST (LPOP to get entries, RPUSH to enqueue)
-    def outbox_cache_key
-      @outbox_cache_key ||= "#{session_cache_key}/outbox".freeze
-    end
-
-    # inbox: points to a LIST (LPOP to get entries, RPUSH to enqueue)
-    def inbox_cache_key
-      @inbox_cache_key ||= "#{session_cache_key}/inbox".freeze
-    end
 
     # Stolen from Rack::Abstract::Id
     def generate_sid
