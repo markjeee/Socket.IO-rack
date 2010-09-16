@@ -3,4 +3,4 @@
 * Implement a sample chat server that uses the same chat.html from the Socket.IO-node package
   - using single-thread, evented mode
   - support storing session in memory
-* Implement other transports: flashsocket, jsonpolling, iframe
+* Implement other transports: jsonpolling, iframe

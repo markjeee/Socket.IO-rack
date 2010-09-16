@@ -22,6 +22,7 @@ module Palmade::SocketIoRack
     CConnection = "Connection".freeze
     CHTTP_UPGRADE = "HTTP_UPGRADE".freeze
     CHTTP_CONNECTION = "HTTP_CONNECTION".freeze
+    Cflashsocket = "flashsocket".freeze
     Cxhrpolling = "xhr-polling".freeze
     Cws_handler = "ws_handler".freeze
     Cxhrmultipart = "xhr-multipart".freeze
@@ -30,6 +31,7 @@ module Palmade::SocketIoRack
     CCTtext_plain = "text/plain".freeze
 
     SUPPORTED_TRANSPORTS = [ Cwebsocket,
+                             Cflashsocket,
                              Cxhrpolling,
                              Cxhrmultipart
                            ]
@@ -86,6 +88,8 @@ module Palmade::SocketIoRack
                 case transport
                 when Cwebsocket
                   performed, response = perform_websocket(env, rpath, transport, transport_options)
+                when Cflashsocket
+                  performed, response = perform_flashsocket(env, rpath, transport, transport_options)
                 when Cxhrpolling
                   performed, response = perform_xhr_polling(env, rpath, transport, transport_options)
                 when Cxhrmultipart
@@ -119,6 +123,24 @@ module Palmade::SocketIoRack
 
         performed, response = resource.
           initialize_transport!(Cwebsocket).handle_request(env, transport_options, persistence)
+      end
+
+      [ performed, response ]
+    end
+
+    def perform_flashsocket(env, rpath, transport, transport_options)
+      performed = false
+      response = nil
+
+      if env[CHTTP_UPGRADE] == CWebSocket &&
+          env[CHTTP_CONNECTION] == CUpgrade
+
+        resource = create_resource(rpath,
+                                   transport,
+                                   transport_options)
+
+        performed, response = resource.
+          initialize_transport!(Cflashsocket).handle_request(env, transport_options, persistence)
       end
 
       [ performed, response ]
@@ -168,7 +190,7 @@ module Palmade::SocketIoRack
     end
 
     def not_found(msg)
-      [ 404, { CContentType => CCTextplain }, [ msg ] ]
+      [ 404, { CContentType => CCTtext_plain }, [ msg ] ]
     end
 
     # Stolen from ActiveSupport
