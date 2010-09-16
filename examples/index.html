@@ -12,7 +12,8 @@
       if(true) {
         socket = new io.Socket("localhost",
                                { resource: 'firehose',
-                                 transports: [ 'websocket', 'xhr-multipart', 'xhr-polling' ]
+                                 transports: [ 'websocket', 'flashsocket', 'xhr-multipart', 'xhr-polling' ],
+                                 port: 3000
                                });
 
         socket.connect();

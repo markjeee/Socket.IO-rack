@@ -9,6 +9,7 @@ module Palmade::SocketIoRack
 
     Cxhrpolling = "xhr-polling".freeze
     Cwebsocket = "websocket".freeze
+    Cflashsocket = "flashsocket".freeze
     Cxhrmultipart = "xhr-multipart".freeze
 
     Cmframe = "~m~".freeze
@@ -25,6 +26,8 @@ module Palmade::SocketIoRack
       case tn
       when Cwebsocket
         @transport = Transports::WebSocket.new(self, to)
+      when Cflashsocket
+        @transport = Transports::FlashSocket.new(self, to)
       when Cxhrpolling
         @transport = Transports::XhrPolling.new(self, to)
       when Cxhrmultipart
