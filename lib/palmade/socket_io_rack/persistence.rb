@@ -1,5 +1,4 @@
 module Palmade::SocketIoRack
-  # at the moment, only works with Redis
   class Persistence
     autoload :BaseStore, File.join(SOCKET_IO_RACK_LIB_DIR, 'socket_io_rack/persistence/base_store')
     autoload :RedisStore, File.join(SOCKET_IO_RACK_LIB_DIR, 'socket_io_rack/persistence/redis_store')

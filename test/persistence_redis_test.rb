@@ -19,7 +19,7 @@ class PersistenceRedisTest < Test::Unit::TestCase
 
     test_cache_key = "Socket.IO-rack/persistence/test"
     assert(rcache.set(test_cache_key, "1") == "OK", "Fail to set test cache key")
-    assert(rcache.del(test_cache_key) === true, "Fail to delete test cache key")
+    assert(rcache.del(test_cache_key) == 1, "Fail to delete test cache key")
 
     assert(@persistence.reset != rcache, "reset returned the same rcache connection object")
     assert(rcache.ping == "PONG", "rcache is alive")

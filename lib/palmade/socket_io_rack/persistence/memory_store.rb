@@ -3,23 +3,89 @@ module Palmade::SocketIoRack
     class MemoryStore < BaseStore
       DEFAULT_OPTIONS = { }
 
+      class MemoryStoreObject
+        attr_reader :expiry
+        def set_expiry(in_seconds)
+          @expiry = Time.now + in_seconds
+        end
+
+        def cleanup!
+          @outbox.clear if defined?(@outbox) && !@outbox.nil?
+          @inbox.clear if defined?(@inbox) && !@inbox.nil?
+          @hash.clear if defined?(@hash) && !@hash.nil?
+        end
+
+        def outbox
+          if defined?(@outbox)
+            @outbox
+          else
+            @outbox = [ ]
+          end
+        end
+
+        def inbox
+          if defined?(@inbox)
+            @inbox
+          else
+            @inbox = [ ]
+          end
+        end
+
+        def hash
+          if defined?(@hash)
+            @hash
+          else
+            @hash = [ ]
+          end
+        end
+      end
+
       def initialize(options = { })
         @options = DEFAULT_OPTIONS.merge(options)
         @sessions = { }
-        @inboxes = { }
-        @outboxes = { }
       end
 
       def persist!(session)
-        raise "Not implemented"
+        sess_id = session.session_id.dup.freeze
+        if @sessions.include?(sess_id)
+          mso = @sessions[sess_id]
+        else
+          mso = @sessions[sess_id] = MemoryStoreObject.new
+        end
+
+        mso.set_expiry(@options[:cache_expiry])
       end
+      alias :persist :persist!
 
       def renew!(session)
-        raise "Not implemented"
+        sess_id = session.session_id.dup.freeze
+        if @sessions.include?(sess_id)
+          mso = @sessions[sess_id]
+        else
+          raise "Can't renew, session not found"
+        end
+
+        mso.set_expiry(@options[:cache_expiry])
       end
 
       def drop!(session)
-        raise "Not implemented"
+        sess_id = session.session_id.dup.freeze
+        if @sessions.include?(sess_id)
+          mso = @sessions.delete(sess_id)
+          unless mso.nil?
+            mso.cleanup!
+          end
+        else
+          raise "Can't renew, session not found"
+        end
+      end
+
+      def session_exists?(session_id)
+        if @sessions.include?(session_id)
+          true
+        else
+          false
+        end
       end
 
       # Set hash value
@@ -82,10 +148,6 @@ module Palmade::SocketIoRack
       end
 
       def close
-        raise "Not implemented"
-      end
-
-      def session_exists?(session_id)
         raise "Not implemented"
       end
     end
