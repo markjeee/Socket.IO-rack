@@ -18,6 +18,7 @@ module Palmade::SocketIoRack
 
         it "should use memory store (as default)" do
           store = @persistence.store
+
           store.should be_an_instance_of Palmade::SocketIoRack::Persistence::MemoryStore
         end
       end
@@ -25,6 +26,7 @@ module Palmade::SocketIoRack
       context "session" do
         it "should create a new session" do
           sess = @persistence.create_session
+
           sess.should be_an_instance_of Palmade::SocketIoRack::Session
           sess.new?.should be_true
           sess.dropped?.should be_false
