@@ -1,4 +1,4 @@
-require File.expand_path(File.join(File.dirname(__FILE__), 'test_helper'))
+require File.expand_path(File.join(File.dirname(__FILE__), 'spec_helper'))
 
 module Palmade::SocketIoRack
   class Persistence
@@ -49,7 +49,7 @@ module Palmade::SocketIoRack
       class MemoryStore
         context MemoryStoreObject do
           it "should instantiate" do
-            Palmade::SocketIoRack::Persistence::MemoryStore::MemoryStoreObject
+            Palmade::SocketIoRack::Persistence::MemoryStore::MemoryStoreObject.new
           end
 
           it "should cleanup" do
