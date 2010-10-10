@@ -3,7 +3,7 @@ gem 'echoe'
 require 'echoe'
 
 Echoe.new("Socket.IO-rack") do |p|
-  p.author="markjeee"
+  p.author = "palmade"
   p.project = "palmade"
   p.summary = "Socket.IO Rack version (server side)"
 
